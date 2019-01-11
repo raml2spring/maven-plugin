@@ -4,7 +4,7 @@
 
     <groupId>com.github.raml2spring</groupId>
     <artifactId>raml2spring-maven-plugin</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
 
     <properties>
@@ -213,7 +213,7 @@
         <connection>scm:git:git://github.com/raml2spring/maven-plugin.git</connection>
         <developerConnection>scm:git:https://github.com/raml2spring/maven-plugin.git</developerConnection>
         <url>https://github.com/raml2spring/maven-plugin</url>
-      <tag>raml2spring-maven-plugin-0.1.0</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <developers>
