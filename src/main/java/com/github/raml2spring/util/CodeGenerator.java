@@ -105,7 +105,6 @@ public class CodeGenerator {
                     if(StringUtils.hasText(method.getDescription())) {
                         JDocComment doc = restcall.javadoc();
                         doc.add(method.getDescription());
-                        doc.add("test");
                     }
                     JAnnotationUse requestMapping = restcall.annotate(RequestMapping.class);
                     requestMapping.param("value", method.getUri());
