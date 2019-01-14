@@ -7,6 +7,7 @@ import com.github.raml2spring.exception.RamlIOException;
 import com.github.raml2spring.data.RPType;
 import com.sun.codemodel.*;
 import org.raml.v2.api.model.v10.datamodel.*;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -101,6 +102,11 @@ public class CodeGenerator {
                     }
 
                     JMethod restcall = jc.method(JMod.PUBLIC, returnType, method.getName());
+                    if(StringUtils.hasText(method.getDescription())) {
+                        JDocComment doc = restcall.javadoc();
+                        doc.add(method.getDescription());
+                        doc.add("test");
+                    }
                     JAnnotationUse requestMapping = restcall.annotate(RequestMapping.class);
                     requestMapping.param("value", method.getUri());
                     requestMapping.param("method", RequestMethod.valueOf(method.getMethod()));

@@ -14,6 +14,7 @@ import org.raml.v2.api.model.v10.datamodel.TypeDeclaration;
 import org.raml.v2.api.model.v10.methods.Method;
 import org.raml.v2.api.model.v10.resources.Resource;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -106,6 +107,12 @@ public class RamlParser {
 
         List<String> uriParams = getPathParameters(resource.resourcePath());
         Map<String, RPException> exceptions = model.getExceptions();
+
+        String description = null;
+        if(resource.description() != null && StringUtils.hasText(resource.description().value())) {
+            description = resource.description().value();
+        }
+
         //get methods
         for (Method method : resource.methods()) {
             RPMethod rpMethod = new RPMethod();
@@ -115,6 +122,7 @@ public class RamlParser {
             rpMethod.setName(methodName);
             rpMethod.setUri(resource.resourcePath());
             rpMethod.setMethod(method.method().toUpperCase());
+            rpMethod.setDescription(description);
 
             //add uriParams
             rpMethod.setUriParams(uriParams);
@@ -159,19 +167,22 @@ public class RamlParser {
                     TypeDeclaration typeDeclaration = getReturnTypeDeclaration(response.body());
                     if(typeDeclaration instanceof JSONTypeDeclaration ||
                             typeDeclaration instanceof ObjectTypeDeclaration) {
-                        String name = NamingHelper.getClassName(response.description().value()) + "Exception";
+                        String name = "Error".concat(response.code().value()); //methodName.concat(response.code().value());
+                        if(response.description() != null && StringUtils.hasText(response.description().value())) {
+                            name = response.description().value();
+                        }
+                        name = NamingHelper.getClassName(name) + "Exception";
 
                         if(exceptions.containsKey(name)) {
                             if(!exceptions.get(name).getTypeDeclaration().type().equals(typeDeclaration.type())) {
-                                throw new RuntimeException("ExceptionName conflict!");
+                                name = NamingHelper.getClassName(name, exceptions.keySet());
                             }
-                        } else {
-                            exceptions.put(name, new RPException(name, HttpStatus.valueOf(code), typeDeclaration, null));
                         }
+                        exceptions.put(name, new RPException(name, HttpStatus.valueOf(code), typeDeclaration, null));
                         rpMethod.getHandledExceptions().add(name);
-                    } else {
+                    } /*else {
                         //"WARNING: response error should be of type Object or JSON"
-                    }
+                    }*/
 
                 }
             }

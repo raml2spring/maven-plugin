@@ -1,5 +1,8 @@
 package com.github.raml2spring.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.raml2spring.configuration.Jsonschema2pojoConfig;
 import com.github.raml2spring.configuration.Raml2SpringConfig;
 import com.github.raml2spring.data.RPEnum;
@@ -10,14 +13,21 @@ import com.sun.codemodel.*;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang3.StringUtils;
+import org.jsonschema2pojo.Jsonschema2Pojo;
+import org.jsonschema2pojo.Schema;
 import org.jsonschema2pojo.SchemaMapper;
+import org.jsonschema2pojo.SchemaStore;
+import org.jsonschema2pojo.exception.GenerationException;
 import org.raml.v2.api.model.v10.datamodel.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -312,11 +322,51 @@ class RamlTypeHelper {
         Jsonschema2pojoConfig jsonschema2pojoConfig = new Jsonschema2pojoConfig();
         SchemaMapper mapper = jsonschema2pojoConfig.getDefaultSchemaMapper(); //new SchemaMapper(ruleFactory, new SchemaGenerator());
         try {
-            return mapper.generate(codeModel, name, basePackage, schema, new URI(schemaLocation));
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode jsonNode = objectMapper.readTree(schema);
+            // ************************
+            // * workaround jsonschema2pojo issue -
+            // * we have to remove extends-property and handle it at our own
+            // ************************
+            if(jsonNode.has("extends")) {
+                JsonNode extendsNode = jsonNode.get("extends");
+                Schema extendsSchema = new Schema(new URI(schemaLocation), null, null);
+                extendsSchema = new SchemaStore().create(extendsSchema, extendsNode.get("$ref").asText(), jsonschema2pojoConfig.getRefFragmentPathDelimiters());
+                JType refType = mapper.generate(codeModel, nameFromRef(extendsNode.get("$ref").asText(), jsonschema2pojoConfig),
+                        basePackage, extendsSchema.getContent().toString(), new URI(schemaLocation));
+
+                ((ObjectNode)jsonNode).remove("extends");
+                JType returnType = mapper.generate(codeModel, name, basePackage, jsonNode.toString(), new URI(schemaLocation));
+
+                JDefinedClass defClass = codeModel._getClass(returnType.fullName());
+                defClass._extends(refType.boxify());
+                return defClass;
+            }
+            return mapper.generate(codeModel, name, basePackage, jsonNode.toString(), new URI(schemaLocation));
         } catch (URISyntaxException | IOException e) {
             e.printStackTrace();
         }
         //return codeModel;
         return null;
+    }
+
+    private static String nameFromRef(String ref, Jsonschema2pojoConfig jsonschema2pojoConfig) {
+        if ("#".equals(ref)) {
+            return null;
+        } else {
+            String nameFromRef;
+            if (!StringUtils.contains(ref, "#")) {
+                nameFromRef = Jsonschema2Pojo.getNodeName(ref, jsonschema2pojoConfig);
+            } else {
+                String[] nameParts = StringUtils.split(ref, "/\\#");
+                nameFromRef = nameParts[nameParts.length - 1];
+            }
+
+            try {
+                return URLDecoder.decode(nameFromRef, "utf-8");
+            } catch (UnsupportedEncodingException var4) {
+                throw new GenerationException("Failed to decode ref: " + ref, var4);
+            }
+        }
     }
 }

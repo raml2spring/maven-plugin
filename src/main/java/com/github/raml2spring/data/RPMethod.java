@@ -16,22 +16,13 @@ public class RPMethod {
     private String name;
     private String method;
     private String uri;
+    private String description;
     private HttpStatus responseStatus;
     private TypeDeclaration returnType;
-    //@Builder.Default
-    //@Singular
     private List<String> produces = new ArrayList<>();
-    //@Builder.Default
-    //@Singular
     private List<TypeDeclaration> queryParams = new ArrayList<>();
-    //@Builder.Default
-    //@Singular
     private List<TypeDeclaration> headerParams = new ArrayList<>();
-    //@Builder.Default
-    //@Singular
     private List<String> uriParams = new ArrayList<>();
-    //@Builder.Default
-    //@Singular
     private List<String> handledExceptions = new ArrayList<>();
     private TypeDeclaration body;
 
