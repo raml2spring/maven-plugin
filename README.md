@@ -14,6 +14,7 @@ Generates Spring code from RAML.
 <configuration>
     <ramlPath>src/main/resources/api.raml</ramlPath>
     <basePackage>com.example</basePackage>
+    <outputPath>./target/generated-sources/</outputPath>
 </configuration>
 <executions>
     <execution>
