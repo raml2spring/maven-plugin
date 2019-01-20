@@ -1,5 +1,6 @@
 package com.github.raml2spring.util;
 
+import com.github.raml2spring.configuration.Raml2SpringConfig;
 import com.github.raml2spring.data.*;
 import com.github.raml2spring.util.comparator.TypeComparator;
 import com.sun.codemodel.*;
@@ -65,9 +66,9 @@ public class RamlParser {
             String typeName = typeDeclaration.name();  //NamingHelper.getClassName(typeDeclaration.name());
             JType pojo;
             if(typeDeclaration instanceof JSONTypeDeclaration && !typeDeclaration.type().startsWith("{")) {
-                pojo = RamlTypeHelper.extendFromJSON(typeModel, typeDeclaration, rpModel, rpModel.getBasePackage() + ".model");
+                pojo = RamlTypeHelper.extendFromJSON(typeModel, typeDeclaration, rpModel, Raml2SpringConfig.getBasePackage() + ".model");
             } else {
-                pojo = RamlTypeHelper.generateType(typeModel, typeDeclaration, rpModel, rpModel.getBasePackage() + ".model", typeName);
+                pojo = RamlTypeHelper.generateType(typeModel, typeDeclaration, rpModel, Raml2SpringConfig.getBasePackage() + ".model", typeName);
             }
 
             rpModel.getTypes().put(typeName, new RPType(typeName, pojo, typeModel, typeDeclaration));

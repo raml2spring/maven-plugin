@@ -10,9 +10,6 @@ import java.util.Map;
 @NoArgsConstructor
 public class RPModel {
 
-    private String basePackage;
-    private String schemaLocation;
-
     private Map<String, RPEndpoint> endpoints = new HashMap<>();
     private Map<String, RPException> exceptions = new HashMap<>();
     private Map<String, RPEnum> enums = new HashMap<>();

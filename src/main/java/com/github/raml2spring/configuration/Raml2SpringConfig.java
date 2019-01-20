@@ -11,9 +11,7 @@ import java.util.Date;
 public class Raml2SpringConfig {
 
     private static Raml2SpringMojo raml2SpringMojo;
-
-    private static final String DEFAULT_BASE_BACKAGE = "com.github.raml2spring.api";
-    private static final String DEFAULT_OUTPUT_RELATIVE_PATH = "/target/generated-sources/";
+    private static String _schemaLocation;
 
     public static void setMojo(Raml2SpringMojo raml2SpringMojo) {
         Raml2SpringConfig.raml2SpringMojo = raml2SpringMojo;
@@ -23,14 +21,22 @@ public class Raml2SpringConfig {
         if(raml2SpringMojo != null) {
             return raml2SpringMojo.basePackage;
         }
-        return DEFAULT_BASE_BACKAGE;
+        return "";
     }
 
     public static String getOutputPath() {
         if(raml2SpringMojo != null) {
             return raml2SpringMojo.outputPath;
         }
-        return DEFAULT_OUTPUT_RELATIVE_PATH;
+        return "";
+    }
+
+    public static String getSchemaLocation() {
+        return _schemaLocation;
+    }
+
+    public static void setSchemaLocation(String schemaLocation) {
+        _schemaLocation = schemaLocation;
     }
 
     public static Log getLog() {
