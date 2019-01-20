@@ -61,7 +61,7 @@ public class CodeGenerator {
                 }
                 JCodeModel typeModel = new JCodeModel(); //cloner.deepClone(type.getModel());
 
-                RamlTypeHelper.generateType(typeModel, typeDeclaration, model, model.getBasePackage() + ".exception", exception.getName());
+                RamlTypeHelper.generateType(typeModel, typeDeclaration, model, Raml2SpringConfig.getBasePackage() + ".exception", exception.getName());
 
                 JDefinedClass dclass = typeModel.packages().next().classes().next();
                 dclass._extends(RuntimeException.class);
@@ -81,7 +81,7 @@ public class CodeGenerator {
         model.getEndpoints().forEach((name, endpoint) -> {
             try {
                 JCodeModel codeModel = new JCodeModel();
-                JPackage jp = codeModel._package(model.getBasePackage());
+                JPackage jp = codeModel._package(Raml2SpringConfig.getBasePackage());
                 JDefinedClass jc = jp._interface(endpoint.getName());
                 jc.javadoc().add("Generated with raml2spring");
                 jc.annotate(RestController.class);

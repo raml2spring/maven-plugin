@@ -30,7 +30,7 @@ public class Raml2SpringMojo extends AbstractMojo {
     @Parameter(property = "ramlPath", required = true, readonly = true)
     public String ramlPath;
 
-    @Parameter(property = "outputPath", readonly = true)
+    @Parameter(property = "outputPath", readonly = true, defaultValue = "./target/generated-sources/")
     public String outputPath;
 
     @Parameter(property = "basePackage", required = true, readonly = true)
@@ -41,6 +41,12 @@ public class Raml2SpringMojo extends AbstractMojo {
 
     @Parameter(property = "useOldJavaDate", readonly = true, defaultValue = "false")
     public boolean useOldJavaDate;
+
+    @Parameter(property = "ignoreProperties", readonly = true, defaultValue = "false")
+    public boolean ignoreProperties;
+
+    @Parameter(property = "ignoreUnknown", readonly = true, defaultValue = "false")
+    public boolean ignoreUnknown;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -59,18 +65,16 @@ public class Raml2SpringMojo extends AbstractMojo {
 
     private void ramlToSpring() {
 
-        Raml2SpringConfig.setMojo(this);
-
         String resolvedRamlPath = getAbsoluteRamlPath();
         String resolvedSchemaLocation = getAbsoluteSchemaLocation(resolvedRamlPath);
         String resolvedOutputPath = getAbsoluteOutputPath();
 
+        Raml2SpringConfig.setMojo(this);
+        Raml2SpringConfig.setSchemaLocation(toUriString(resolvedSchemaLocation));
+
         getLog().info("parse RAML ...");
         RamlParser ramlParser = new RamlParser(toUriString(resolvedRamlPath));
         RPModel model = new RPModel();
-
-        model.setBasePackage(Raml2SpringConfig.getBasePackage());
-        model.setSchemaLocation(toUriString(resolvedSchemaLocation));
 
         model = ramlParser.readModel(model);
         getLog().info("write Data to Disk ...");
@@ -96,7 +100,7 @@ public class Raml2SpringMojo extends AbstractMojo {
         if(StringUtils.hasText(outputPath)) {
             return getAbsolutePath(outputPath);
         } else {
-            return getAbsolutePath("/target/generated-sources/");
+            return getAbsolutePath(Raml2SpringConfig.getOutputPath());
         }
     }
 

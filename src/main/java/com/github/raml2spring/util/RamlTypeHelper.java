@@ -147,7 +147,7 @@ class RamlTypeHelper {
 
     static JType generateType(JCodeModel typeModel, TypeDeclaration typeDeclaration, RPModel rpModel, String packagePath, String typeName) {
         if(typeDeclaration instanceof JSONTypeDeclaration) {
-            return buildModel(typeModel, packagePath, typeName, typeDeclaration.type(), rpModel.getSchemaLocation());
+            return buildModel(typeModel, packagePath, typeName, typeDeclaration.type(), Raml2SpringConfig.getSchemaLocation());
         } else if (typeDeclaration instanceof ObjectTypeDeclaration){
             return RamlTypeHelper.getObject(typeModel, typeDeclaration, rpModel, packagePath, typeName);
         } else if (typeDeclaration instanceof StringTypeDeclaration) {
@@ -163,7 +163,7 @@ class RamlTypeHelper {
             //Raml2SpringConfig.getLog().warn("Please use types:".concat(typeDeclaration.name()));
             String newTypeNameChecked = NamingHelper.getClassName(newTypeName, rpModel.getTypes().keySet());
             type = generateType(codeModel, typeDeclaration, rpModel,
-                    rpModel.getBasePackage() + ".model", newTypeNameChecked);
+                    Raml2SpringConfig.getBasePackage() + ".model", newTypeNameChecked);
             rpModel.getTypes().put(newTypeNameChecked, new RPType(newTypeNameChecked, type, codeModel, typeDeclaration));
         }
         return type;
@@ -235,8 +235,8 @@ class RamlTypeHelper {
 
                     properties.add(prop);
                 });
-                addHashCodeMethod(jc, properties, objectTypeDeclaration, hasSuperclass);
                 addToStringMethod(jc, properties, objectTypeDeclaration, hasSuperclass);
+                addHashCodeMethod(jc, properties, objectTypeDeclaration, hasSuperclass);
                 addEqualsMethod(jc, properties, objectTypeDeclaration, hasSuperclass);
                 return jc;
 
@@ -265,6 +265,7 @@ class RamlTypeHelper {
 
     private static void addToStringMethod(JDefinedClass jc, Collection<JFieldVar> properties, ObjectTypeDeclaration objectTypeDeclaration, boolean hasSuperclass) {
         JMethod hashCode = jc.method(JMod.PUBLIC, String.class, "toString");
+        hashCode.annotate(Override.class);
         //TODO commons3???
         JClass hashCodeBuilderRef = jc.owner().ref(ToStringBuilder.class);
         JInvocation invocation = JExpr._new(hashCodeBuilderRef).arg(JExpr._this());
@@ -279,6 +280,7 @@ class RamlTypeHelper {
 
     private static void addHashCodeMethod(JDefinedClass jc, Collection<JFieldVar> properties, ObjectTypeDeclaration objectTypeDeclaration, boolean hasSuperclass) {
         JMethod hashCode = jc.method(JMod.PUBLIC, int.class, "hashCode");
+        hashCode.annotate(Override.class);
         //TODO commons3???
         JClass hashCodeBuilderRef = jc.owner().ref(HashCodeBuilder.class);
         JInvocation invocation = JExpr._new(hashCodeBuilderRef);
@@ -293,6 +295,7 @@ class RamlTypeHelper {
 
     private static void addEqualsMethod(JDefinedClass jc, Collection<JFieldVar> properties, ObjectTypeDeclaration objectTypeDeclaration, boolean hasSuperclass) {
         JMethod equals = jc.method(JMod.PUBLIC, boolean.class, "equals");
+        equals.annotate(Override.class);
         JVar otherObject = equals.param(Object.class, "other");
 
         JBlock body = equals.body();
@@ -332,6 +335,7 @@ class RamlTypeHelper {
                 JsonNode extendsNode = jsonNode.get("extends");
                 Schema extendsSchema = new Schema(new URI(schemaLocation), null, null);
                 extendsSchema = new SchemaStore().create(extendsSchema, extendsNode.get("$ref").asText(), jsonschema2pojoConfig.getRefFragmentPathDelimiters());
+                ((ObjectNode)extendsSchema.getContent()).remove("extends");
                 JType refType = mapper.generate(codeModel, nameFromRef(extendsNode.get("$ref").asText(), jsonschema2pojoConfig),
                         basePackage, extendsSchema.getContent().toString(), new URI(schemaLocation));
 
@@ -340,6 +344,11 @@ class RamlTypeHelper {
 
                 JDefinedClass defClass = codeModel._getClass(returnType.fullName());
                 defClass._extends(refType.boxify());
+                defClass.methods().removeIf(method -> "toString".equals(method.name()) || "hashCode".equals(method.name()) || "equals".equals(method.name()));
+                Collection<JFieldVar> fields = getFieldsFromClass(defClass);
+                addToStringMethod(defClass, fields, null, true);
+                addHashCodeMethod(defClass, fields, null, true);
+                addEqualsMethod(defClass, fields, null, true);
                 return defClass;
             }
             return mapper.generate(codeModel, name, basePackage, jsonNode.toString(), new URI(schemaLocation));
@@ -368,5 +377,15 @@ class RamlTypeHelper {
                 throw new GenerationException("Failed to decode ref: " + ref, var4);
             }
         }
+    }
+
+    private static Collection<JFieldVar> getFieldsFromClass(JDefinedClass clazz) {
+        final Collection<JFieldVar> temp = new ArrayList<JFieldVar>();
+        clazz.fields().forEach((name, field) -> {
+            if((field.mods().getValue() & JMod.STATIC) == 0) {
+                temp.add(field);
+            }
+        });
+        return temp;
     }
 }
