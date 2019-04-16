@@ -146,7 +146,7 @@ public class CodeGenerator {
                 codeModel.build(dir, logOutputStream);
             } catch(Exception e) {
                 //throw new RuntimeException(e.getMessage());
-                throw new RamlIOException("error writing endpoints: ", e);
+                throw new RamlIOException("error writing endpoints: ".concat(e.getMessage()), e);
             }
         });
 

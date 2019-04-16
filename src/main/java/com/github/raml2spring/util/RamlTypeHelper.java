@@ -335,9 +335,15 @@ class RamlTypeHelper {
                 JsonNode extendsNode = jsonNode.get("extends");
                 Schema extendsSchema = new Schema(new URI(schemaLocation), null, null);
                 extendsSchema = new SchemaStore().create(extendsSchema, extendsNode.get("$ref").asText(), jsonschema2pojoConfig.getRefFragmentPathDelimiters());
-                ((ObjectNode)extendsSchema.getContent()).remove("extends");
-                JType refType = mapper.generate(codeModel, nameFromRef(extendsNode.get("$ref").asText(), jsonschema2pojoConfig),
-                        basePackage, extendsSchema.getContent().toString(), new URI(schemaLocation));
+
+                JType refType;
+                if(((ObjectNode)extendsSchema.getContent()).has("extends")) {
+                    refType = buildModel(codeModel, basePackage, nameFromRef(extendsNode.get("$ref").asText(), jsonschema2pojoConfig),
+                            extendsSchema.getContent().toString(), schemaLocation);
+                } else {
+                    refType = mapper.generate(codeModel, nameFromRef(extendsNode.get("$ref").asText(), jsonschema2pojoConfig),
+                            basePackage, extendsSchema.getContent().toString(), new URI(schemaLocation));
+                }
 
                 ((ObjectNode)jsonNode).remove("extends");
                 JType returnType = mapper.generate(codeModel, name, basePackage, jsonNode.toString(), new URI(schemaLocation));
