@@ -4,6 +4,7 @@ import com.github.raml2spring.data.RPModel;
 import com.sun.codemodel.*;
 import org.raml.v2.api.model.v10.datamodel.*;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -25,6 +26,7 @@ class AnnotationHelper {
         JType type = RamlTypeHelper.getTypeSave(codeModel, typeDeclaration, rpModel, method.name() + "Request");
         JVar param = method.param(type, typeDeclaration.name());
         JAnnotationUse requestParam = param.annotate(RequestHeader.class);
+        requestParam.param("value", typeDeclaration.name());
         requestParam.param("required", typeDeclaration.required());
     }
 
@@ -46,6 +48,11 @@ class AnnotationHelper {
         } else if(typeDeclaration instanceof StringTypeDeclaration) {
             annotateStringFormat(param,(StringTypeDeclaration)typeDeclaration);
         }
+    }
+
+    private static void annotateRequestBody(JType type, JMethod method, TypeDeclaration typeDeclaration, String name) {
+        JVar param = method.param(type, name != null ? name : typeDeclaration.name());
+        param.annotate(RequestBody.class);
     }
 
     private static void annotateNumberFormat(JVar param, NumberTypeDeclaration typeDeclaration) {
@@ -105,7 +112,7 @@ class AnnotationHelper {
 
         if("application/json".equals(contentType)) {
             JType type = RamlTypeHelper.getTypeSave(codeModel, typeDeclaration, rpModel, method.name() + "Request");
-            annotateRequestParam(type, method, typeDeclaration, true, "body");
+            annotateRequestBody(type, method, typeDeclaration, "body");
         } else if("multipart/form-data".equals(contentType)) {
             if(typeDeclaration instanceof ObjectTypeDeclaration) {
                 ObjectTypeDeclaration objectTypeDeclaration = (ObjectTypeDeclaration) typeDeclaration;
