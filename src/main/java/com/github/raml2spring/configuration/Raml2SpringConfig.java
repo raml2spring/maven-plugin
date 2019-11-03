@@ -88,4 +88,11 @@ public class Raml2SpringConfig {
         return LocalDateTime.class;
     }
 
+    public static boolean getEnabledHypermediaSupport() {
+        if(raml2SpringMojo != null) {
+            return raml2SpringMojo.enableHypermediaSupport;
+        }
+        return Boolean.FALSE;
+    }
+
 }

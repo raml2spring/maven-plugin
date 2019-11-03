@@ -1,8 +1,9 @@
 package com.github.raml2spring.util;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.*;
 import com.github.raml2spring.configuration.Jsonschema2pojoConfig;
 import com.github.raml2spring.configuration.Raml2SpringConfig;
 import com.github.raml2spring.data.RPEnum;
@@ -20,6 +21,7 @@ import org.jsonschema2pojo.SchemaMapper;
 import org.jsonschema2pojo.SchemaStore;
 import org.jsonschema2pojo.exception.GenerationException;
 import org.raml.v2.api.model.v10.datamodel.*;
+import org.springframework.hateoas.ResourceSupport;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -327,6 +329,77 @@ class RamlTypeHelper {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode = objectMapper.readTree(schema);
+
+
+            List<JsonNode> aoList = jsonNode.findParents("allOf");
+
+            for(JsonNode node : aoList) {
+                ArrayNode aoNode = (ArrayNode)node.path("allOf");
+                ObjectNode oNode = (ObjectNode)node;
+                JsonNode nodeSave = objectMapper.createObjectNode();
+
+                for(int i = 0; i < aoNode.size(); i++) {
+                    if (aoNode.get(i).has("$ref")) {
+                        Schema extendsSchema;
+                        String filename = null;
+
+                        Raml2SpringConfig.getLog().info("parse allOf $ref:" + aoNode.get(i).get("$ref").asText());
+                        if(aoNode.get(i).get("$ref").asText().startsWith("#")) {
+                            extendsSchema = new Schema(null, jsonNode.deepCopy(), null);
+                        } else {
+                            //extendsSchema = new Schema(null, jsonNode, null);
+                            filename = StringUtils.substringBefore(aoNode.get(i).get("$ref").asText(), "#");
+                            extendsSchema = new Schema(new URI(schemaLocation.concat(StringUtils.substringBefore(aoNode.get(i).get("$ref").asText(), "#"))), null, null);
+                        }
+
+                        extendsSchema = new SchemaStore().create(extendsSchema, aoNode.get(i).get("$ref").asText(), jsonschema2pojoConfig.getRefFragmentPathDelimiters());
+                        JsonNode newNode = extendsSchema.getContent();
+                        if (filename != null) {
+                            for(JsonNode refNode : newNode.findParents("$ref")) {
+                                String ref = refNode.path("$ref").asText();
+                                if(ref.startsWith("#")) {
+                                    ((ObjectNode)refNode).put("$ref", filename.concat(ref));
+                                }
+
+                            }
+                        }
+                        JsonUtil.merge(newNode, nodeSave);
+                    } else if(aoNode.get(i).has("properties")) {
+                        JsonUtil.merge(aoNode.get(i), nodeSave);
+                    } else {
+
+                    }
+
+                }
+
+                oNode.remove("allOf");
+                oNode.put("type", "object");
+                oNode.set("properties", nodeSave.path("properties"));
+                oNode.set("required", nodeSave.path("required"));
+
+//                Schema extendsSchema = new Schema(new URI(schemaLocation), null, null);
+//                extendsSchema = new SchemaStore().create(extendsSchema, aoNode.get(0).get("$ref").asText(), jsonschema2pojoConfig.getRefFragmentPathDelimiters());
+//                System.out.println(extendsSchema.getContent().asText());
+//                JsonUtil.merge(aoNode.get(1), extendsSchema.getContent());
+//
+//                aoSave = extendsSchema.getContent().path("properties");
+//                //aoNode.remove(0);
+//                oNode.remove("allOf");
+//                oNode.put("type", "object");
+//                oNode.set("properties", extendsSchema.getContent().path("properties"));
+//                oNode.set("required", extendsSchema.getContent().path("required"));
+
+            }
+
+//            Object aoNode = jsonNode.findPath("allOf");
+//            if(aoNode instanceof ArrayNode) {
+//
+//                Iterator<JsonNode> it = ((ArrayNode)aoNode).elements();
+//                while(it.hasNext()) {
+//
+//                }
+//            }
+
             // ************************
             // * workaround jsonschema2pojo issue -
             // * we have to remove extends-property and handle it at our own
@@ -337,7 +410,7 @@ class RamlTypeHelper {
                 extendsSchema = new SchemaStore().create(extendsSchema, extendsNode.get("$ref").asText(), jsonschema2pojoConfig.getRefFragmentPathDelimiters());
 
                 JType refType;
-                if(((ObjectNode)extendsSchema.getContent()).has("extends")) {
+                if (((ObjectNode) extendsSchema.getContent()).has("extends")) {
                     refType = buildModel(codeModel, basePackage, nameFromRef(extendsNode.get("$ref").asText(), jsonschema2pojoConfig),
                             extendsSchema.getContent().toString(), schemaLocation);
                 } else {
@@ -345,7 +418,7 @@ class RamlTypeHelper {
                             basePackage, extendsSchema.getContent().toString(), new URI(schemaLocation));
                 }
 
-                ((ObjectNode)jsonNode).remove("extends");
+                ((ObjectNode) jsonNode).remove("extends");
                 JType returnType = mapper.generate(codeModel, name, basePackage, jsonNode.toString(), new URI(schemaLocation));
 
                 JDefinedClass defClass = codeModel._getClass(returnType.fullName());
@@ -356,13 +429,111 @@ class RamlTypeHelper {
                 addHashCodeMethod(defClass, fields, null, true);
                 addEqualsMethod(defClass, fields, null, true);
                 return defClass;
+//              }
+            } else if (Raml2SpringConfig.getEnabledHypermediaSupport()) {
+                JType returnType = mapper.generate(codeModel, name, basePackage, jsonNode.toString());
+//                JDefinedClass defClass = codeModel._getClass(returnType.fullName());
+//                defClass._extends(ResourceSupport.class);
+                Iterator<JDefinedClass> it = codeModel.packages().next().classes();
+                while(it.hasNext()) {
+                    JDefinedClass jDefinedClass = it.next();
+                    JFieldVar jfv_links = jDefinedClass.fields().get("links");
+                    if(jfv_links != null) {
+                        jDefinedClass.removeField(jfv_links);
+                        jDefinedClass.methods().removeIf(method -> "toString".equals(method.name())
+                                || "hashCode".equals(method.name())
+                                || "equals".equals(method.name())
+                                || "getLinks".equals(method.name())
+                                || "setLinks".equals(method.name())
+                                || "withLinks".equals(method.name())
+                                || "getId".equals(method.name())
+                                || "setId".equals(method.name())
+                                || "withId".equals(method.name())
+                        );
+                        JFieldVar jfv_id = jDefinedClass.fields().get("id");
+                        if(jfv_id != null) {
+                            jDefinedClass.removeField(jfv_id);
+                            //JType propType = getType(codeModel, property, rpModel);
+                            JFieldVar prop = jDefinedClass.field(JMod.PRIVATE, jfv_links.type(), "entityId");
+
+                            JMethod getMethod = jDefinedClass.method(JMod.PUBLIC, jfv_links.type(), "getEntityId");
+                            getMethod.body()._return(prop);
+
+                            JMethod setMethod = jDefinedClass.method(JMod.PUBLIC, codeModel.VOID, "setEntityId");
+                            setMethod.param(prop.type(), prop.name());
+                            setMethod.body().assign(JExpr._this().ref(prop.name()), JExpr.ref(prop.name()));
+
+                            JMethod withMethod = jDefinedClass.method(JMod.PUBLIC, jDefinedClass, "withEntityId");
+                            withMethod.param(prop.type(), prop.name());
+                            withMethod.body().assign(JExpr._this().ref(prop.name()), JExpr.ref(prop.name()));
+                            withMethod.body()._return(JExpr._this());
+
+                            JAnnotationUse getAn = getMethod.annotate(JsonProperty.class);
+                            getAn.param("value", "id");
+
+                            JAnnotationUse setAn = setMethod.annotate(JsonProperty.class);
+                            setAn.param("value", "id");
+
+                            JAnnotationUse propAn = prop.annotate(JsonProperty.class);
+                            propAn.param("value", "id");
+                        }
+                        Collection<JFieldVar> fields = getFieldsFromClass(jDefinedClass);
+                        addToStringMethod(jDefinedClass, fields, null, true);
+                        addHashCodeMethod(jDefinedClass, fields, null, true);
+                        addEqualsMethod(jDefinedClass, fields, null, true);
+                        jDefinedClass._extends(ResourceSupport.class);
+                    }
+                }
+                return returnType;
             }
-            return mapper.generate(codeModel, name, basePackage, jsonNode.toString(), new URI(schemaLocation));
+            Raml2SpringConfig.getLog().info("generate:" + jsonNode.toString());
+            return mapper.generate(codeModel, name, basePackage, jsonNode.toString()); // , new URI(schemaLocation));
         } catch (URISyntaxException | IOException e) {
             e.printStackTrace();
         }
         //return codeModel;
         return null;
+    }
+
+    private static JsonNode merge(JsonNode mainNode, JsonNode updateNode) {
+        Iterator<String> fieldNames = updateNode.fieldNames();
+
+        while (fieldNames.hasNext()) {
+
+            String fieldName = fieldNames.next();
+            JsonNode jsonNode = mainNode.get(fieldName);
+
+            if (jsonNode != null) {
+                if (jsonNode.isObject()) {
+                    merge(jsonNode, updateNode.get(fieldName));
+                } else if (jsonNode.isArray()) {
+                    for (int i = 0; i < jsonNode.size(); i++) {
+                        merge(jsonNode.get(i), updateNode.get(fieldName).get(i));
+                    }
+                }
+            } else {
+                if (mainNode instanceof ObjectNode) {
+                    // Overwrite field
+                    JsonNode value = updateNode.get(fieldName);
+
+                    if (value.isNull()) {
+                        continue;
+                    }
+
+                    if (value.isIntegralNumber() && value.toString().equals("0")) {
+                        continue;
+                    }
+
+                    if (value.isFloatingPointNumber() && value.toString().equals("0.0")) {
+                        continue;
+                    }
+
+                    ((ObjectNode) mainNode).put(fieldName, value);
+                }
+            }
+        }
+
+        return mainNode;
     }
 
     private static String nameFromRef(String ref, Jsonschema2pojoConfig jsonschema2pojoConfig) {

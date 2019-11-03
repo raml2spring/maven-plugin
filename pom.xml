@@ -4,7 +4,7 @@
 
     <groupId>com.github.raml2spring</groupId>
     <artifactId>raml2spring-maven-plugin</artifactId>
-    <version>0.2.4-SNAPSHOT</version>
+    <version>0.3.0-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
 
     <properties>
@@ -16,7 +16,8 @@
         <maven.plugin.version>3.5.1</maven.plugin.version>
 
         <springboot.version>1.5.12.RELEASE</springboot.version>
-        <jsonschema2pojo.version>1.0.0</jsonschema2pojo.version>
+        <hateoas.version>0.25.0.RELEASE</hateoas.version>
+        <jsonschema2pojo.version>1.0.1</jsonschema2pojo.version>
         <ramlparser2.version>1.0.28</ramlparser2.version>
         <codemodel.version>2.6</codemodel.version>
         <lombok.version>1.18.4</lombok.version>
@@ -29,6 +30,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <version>${springboot.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.hateoas</groupId>
+            <artifactId>spring-hateoas</artifactId>
+            <version>${hateoas.version}</version>
         </dependency>
 
         <dependency>

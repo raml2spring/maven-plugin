@@ -25,8 +25,9 @@ import java.util.regex.Pattern;
 public class RamlParser {
 
     private Api ramlApi;
+    private boolean generateExceptions = true;
 
-    public RamlParser(String ramlPath) {
+    public RamlParser(String ramlPath, boolean generateExceptions) {
         RamlModelResult ramlModel = new RamlModelBuilder().buildApi(ramlPath);
         if(ramlModel.hasErrors()) {
             StringBuilder validationErros = new StringBuilder();
@@ -34,6 +35,7 @@ public class RamlParser {
             throw new RuntimeException("RAML validation error: " + validationErros.toString());
         }
         ramlApi = ramlModel.getApiV10();
+        this.generateExceptions = generateExceptions;
     }
 
     public RPModel readModel(RPModel rpModel) {
@@ -164,7 +166,7 @@ public class RamlParser {
                     }
                 }
 
-                if(HttpStatus.valueOf(code).is4xxClientError() || HttpStatus.valueOf(code).is5xxServerError()) {
+                if(generateExceptions && (HttpStatus.valueOf(code).is4xxClientError() || HttpStatus.valueOf(code).is5xxServerError())) {
                     TypeDeclaration typeDeclaration = getReturnTypeDeclaration(response.body());
                     if(typeDeclaration instanceof JSONTypeDeclaration ||
                             typeDeclaration instanceof ObjectTypeDeclaration) {

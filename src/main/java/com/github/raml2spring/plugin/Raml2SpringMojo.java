@@ -48,6 +48,13 @@ public class Raml2SpringMojo extends AbstractMojo {
     @Parameter(property = "ignoreUnknown", readonly = true, defaultValue = "false")
     public boolean ignoreUnknown;
 
+    @Parameter(property = "generateExceptions", readonly = true, defaultValue = "true")
+    public boolean generateExceptions;
+
+    @Parameter(property = "enableHypermediaSupport", readonly = true, defaultValue = "false")
+    public boolean enableHypermediaSupport;
+
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         long startTime = System.currentTimeMillis();
@@ -73,7 +80,7 @@ public class Raml2SpringMojo extends AbstractMojo {
         Raml2SpringConfig.setSchemaLocation(toUriString(resolvedSchemaLocation));
 
         getLog().info("parse RAML ...");
-        RamlParser ramlParser = new RamlParser(toUriString(resolvedRamlPath));
+        RamlParser ramlParser = new RamlParser(toUriString(resolvedRamlPath), generateExceptions);
         RPModel model = new RPModel();
 
         model = ramlParser.readModel(model);
