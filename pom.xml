@@ -21,7 +21,7 @@
         <ramlparser2.version>1.0.28</ramlparser2.version>
         <codemodel.version>2.6</codemodel.version>
         <lombok.version>1.18.4</lombok.version>
-        <junit.version>4.11</junit.version>
+        <junit.version>4.13.1</junit.version>
     </properties>
 
     <dependencies>
